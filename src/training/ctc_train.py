@@ -44,7 +44,11 @@ dev_loader= DataLoader(
         tokenizer
     )
 )
-print(f"\nDataset: Train sample= {len(train_loader)}, Validation sample= {len(dev_loader)}")
+print(f"\nDataset:")
+print(f"Train samples: {len(train_dataset)}")
+print(f"Train batches: {len(train_loader)}")
+print(f"Validation samples: {len(dev_dataset)}")
+print(f"Validation batches: {len(dev_loader)}")
 
 # Model
 model= ASRModel(vocab_size= len(tokenizer.vocabulary)).to(device)
@@ -62,7 +66,11 @@ optimizer= torch.optim.Adam(
 )
 
 # Training setting
-num_epochs= 5
+num_epochs= 1
+
+# Sanity check limits
+max_train_batches= 100
+max_val_batches= 20
 best_val_loss= float("inf") # First value placing true
 
 # Training loop
@@ -71,7 +79,11 @@ for epoch in range(num_epochs):
     # Training
     model.train()
     train_loss= 0.0
-    for batch in train_loader:
+    for batch_index, batch in enumerate(train_loader):
+        # Stop after limited number of batches
+        if batch_index >= max_train_batches:
+            break
+        
         features= batch["features"].to(device)
         targets= batch["targets"].to(device)
         feature_lengths= batch["feature_lengths"].to(device)
@@ -102,15 +114,23 @@ for epoch in range(num_epochs):
         
         # Update model parameters(model weigth)
         optimizer.step()
-        
         train_loss+= loss.item()
-    train_loss/= len(train_loader)
+        
+        # Progress
+        if (batch_index + 1) % 10 == 0:
+            print(f"Train batch: {batch_index + 1}/{max_train_batches} | Loss: {loss.item():.4f}")
+        
+    train_loss/= min(max_train_batches, len(train_loader))
 
     # Validation
     model.eval()
     val_loss= 0.0
     with torch.no_grad(): # Turn off gradient on this part
-        for batch in dev_loader:
+        for batch_index, batch in enumerate(dev_loader):
+            # Stop after limited number of batches
+            if batch_index >= max_val_batches:
+                break
+        
             features= batch["features"].to(device)
             targets= batch["targets"].to(device)
             feature_lengths= batch["feature_lengths"].to(device)
@@ -134,7 +154,12 @@ for epoch in range(num_epochs):
             )
             
             val_loss+= loss.item()
-        val_loss/= len(dev_loader)
+            
+            # Progress
+            if (batch_index + 1) % 10 == 0:
+                print(f"Validation batch: {batch_index + 1}/{max_val_batches} | Loss: {loss.item():.4f}")
+                
+        val_loss/= min(max_val_batches, len(dev_loader))
 
         # Report
         print(f"\nEpoch {epoch + 1} / {num_epochs}")
