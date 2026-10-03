@@ -33,6 +33,15 @@ class LibriSpeechDataset(Dataset):
             "speaker_id": sample["speaker_id"]
         }
 
+# ASR Collator
+class ASRCollator:
+    def __init__(self, preprocessor, tokenizer):
+        self.preprocessor= preprocessor
+        self.tokenizer= tokenizer
+    
+    def __call__(self, batch):
+        return collate_fn(batch, self.preprocessor, self.tokenizer)
+
 # Collate function
 def collate_fn(batch, preprocessor, tokenizer):
     features= []
@@ -45,7 +54,9 @@ def collate_fn(batch, preprocessor, tokenizer):
 
     for sample in batch:
         # Audio -> Log-mel
-        feature= preprocessor(sample["audio"])
+        feature = preprocessor(
+            sample["audio"],
+            original_sample_rate=sample["sample_rate"])
         features.append(feature)
         
         # Store actual feature length before padding
@@ -113,7 +124,7 @@ if __name__ == "__main__":
     waveform= sample["audio"]
     transcript= sample["transcript"]
     
-    features= preprocessor(waveform)
+    features= preprocessor(waveform, original_sample_rate=sample["sample_rate"])
     targets= tokenizer.encode(transcript)
     
     print("\nSingle sample:")

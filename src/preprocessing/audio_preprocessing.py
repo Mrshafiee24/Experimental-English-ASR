@@ -21,10 +21,24 @@ class AudioPreprocessor:
         )
         self.amplitude_to_db= torchaudio.transforms.AmplitudeToDB()
         
-    def __call__(self, waveform):
-        if waveform.ndim== 2:
-            waveform= waveform.squeeze(0)
+    def __call__(self, waveform, original_sample_rate=16000):
+        waveform = torch.as_tensor(waveform, dtype=torch.float32)
         
+        # Convert stereo audio to mono
+        if waveform.ndim == 2:
+            if waveform.shape[0] <= 2:
+                waveform = waveform.mean(dim=0)
+            else:
+                waveform = waveform.mean(dim=1)
+        
+        # Resample when the original rate differs
+        if original_sample_rate != self.sample_rate:
+            waveform = torchaudio.functional.resample(
+                waveform,
+                orig_freq=original_sample_rate,
+                new_freq=self.sample_rate
+            )
+            
         mel= self.mel_transform(waveform)
         log_mel= self.amplitude_to_db(mel)
         
