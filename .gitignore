@@ -1,9 +1,6 @@
 # Dataset
 data/raw/
 
-# Model checkpoints
-checkpoints/
-
 # Python
 __pycache__/
 *.py[cod]
